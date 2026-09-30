@@ -1,0 +1,42 @@
+; Engine configuration file.
+
+config_version=5
+
+[application]
+
+config/name="Spotless"
+config/description="A calm 3D cleaning and makeover game. No ads."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.6", "Mobile")
+config/icon="res://icon.png"
+
+[autoload]
+
+Game="*res://scripts/Game.gd"
+Sfx="*res://scripts/Sfx.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+anti_aliasing/quality/msaa_3d=2
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=2
+environment/defaults/default_clear_color=Color(0.9, 0.88, 0.85, 1)
