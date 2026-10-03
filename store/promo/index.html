@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Spotless promo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Fredoka";
+        src: url("assets/Fredoka.ttf") format("truetype");
+        font-weight: 300 700;
+      }
+      body {
+        margin: 0;
+        background: #1d8a80;
+        color: #ffffff;
+        font-family: "Fredoka", sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: linear-gradient(180deg, #1d8a80 0%, #22706e 100%);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .bubble {
+        position: absolute;
+        border-radius: 50%;
+        border: 6px solid rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.18);
+      }
+      #intro-icon {
+        width: 420px;
+        height: 420px;
+        border-radius: 96px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.18);
+      }
+      #intro-title {
+        margin: 64px 0 0;
+        font-size: 170px;
+        font-weight: 600;
+        letter-spacing: -2px;
+      }
+      #intro-sub {
+        margin: 12px 0 0;
+        font-size: 58px;
+        font-weight: 400;
+        color: #fff8dc;
+      }
+      .shot-caption {
+        margin: 0 0 56px;
+        font-size: 84px;
+        font-weight: 600;
+        text-align: center;
+        width: 900px;
+      }
+      .phone {
+        width: 640px;
+        height: 1138px;
+        border-radius: 56px;
+        border: 14px solid #ffffff;
+        overflow: hidden;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.22);
+        background: #ffffff;
+      }
+      .phone img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .end-line {
+        margin: 0;
+        font-size: 92px;
+        font-weight: 600;
+        text-align: center;
+      }
+      #end-icon {
+        width: 300px;
+        height: 300px;
+        border-radius: 70px;
+        margin-bottom: 72px;
+      }
+      #end-name {
+        margin: 72px 0 0;
+        font-size: 120px;
+        font-weight: 600;
+        color: #fdd34a;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1080"
+      data-height="1920"
+      data-duration="12"
+    >
+      <audio id="bgm" src="assets/music.mp3" data-start="0" data-duration="12" data-volume="0.6"></audio>
+
+      <div id="b1" class="bubble" style="width: 180px; height: 180px; left: 80px; top: 260px"></div>
+      <div id="b2" class="bubble" style="width: 120px; height: 120px; left: 860px; top: 420px"></div>
+      <div id="b3" class="bubble" style="width: 220px; height: 220px; left: 800px; top: 1500px"></div>
+      <div id="b4" class="bubble" style="width: 90px; height: 90px; left: 140px; top: 1640px"></div>
+
+      <section id="intro" class="clip" data-start="0" data-duration="2.6" data-track-index="1">
+        <img id="intro-icon" src="assets/icon.png" alt="Spotless icon" />
+        <h1 id="intro-title">Spotless</h1>
+        <p id="intro-sub">Make dirty old things new again</p>
+      </section>
+
+      <section id="shot1" class="clip" data-start="2.6" data-duration="2.2" data-track-index="1">
+        <p id="cap1" class="shot-caption">Wash the mud off</p>
+        <div id="ph1" class="phone"><img src="assets/01.jpg" alt="Washing mud off a sink" /></div>
+      </section>
+
+      <section id="shot2" class="clip" data-start="4.8" data-duration="2.2" data-track-index="1">
+        <p id="cap2" class="shot-caption">Grind the rust away</p>
+        <div id="ph2" class="phone"><img src="assets/02.jpg" alt="Grinding rust off a road sign" /></div>
+      </section>
+
+      <section id="shot3" class="clip" data-start="7" data-duration="2.2" data-track-index="1">
+        <p id="cap3" class="shot-caption">Foam, scrub, polish</p>
+        <div id="ph3" class="phone"><img src="assets/03.jpg" alt="Soap foam on a muddy car" /></div>
+      </section>
+
+      <section id="outro" class="clip" data-start="9.2" data-duration="2.8" data-track-index="1">
+        <img id="end-icon" src="assets/icon.png" alt="Spotless icon" />
+        <p id="end1" class="end-line">No ads</p>
+        <p id="end2" class="end-line">No timers</p>
+        <p id="end3" class="end-line">No purchases</p>
+        <p id="end-name">Spotless</p>
+      </section>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(["#b1", "#b2", "#b3", "#b4"], { y: 0 }, { y: -60, duration: 12, ease: "sine.inOut", stagger: 0.4 }, 0);
+
+      tl.fromTo("#intro-icon", { scale: 0.4, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.7, ease: "back.out(1.8)" }, 0.1);
+      tl.fromTo("#intro-title", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.55);
+      tl.fromTo("#intro-sub", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.8);
+      tl.to(["#intro-icon", "#intro-title", "#intro-sub"], { opacity: 0, y: -40, duration: 0.3, ease: "power2.in" }, 2.3);
+
+      [
+        ["#cap1", "#ph1", 2.6],
+        ["#cap2", "#ph2", 4.8],
+        ["#cap3", "#ph3", 7.0],
+      ].forEach(([cap, phone, t]) => {
+        tl.fromTo(phone, { y: 260, opacity: 0, rotation: 4 }, { y: 0, opacity: 1, rotation: 0, duration: 0.55, ease: "power3.out" }, t);
+        tl.fromTo(cap, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, t + 0.15);
+        tl.fromTo(phone, { scale: 1 }, { scale: 1.04, duration: 1.6, ease: "none" }, t + 0.55);
+        tl.to([cap, phone], { opacity: 0, x: -120, duration: 0.3, ease: "power2.in" }, t + 1.9);
+      });
+
+      tl.fromTo("#end-icon", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.8)" }, 9.25);
+      tl.fromTo(["#end1", "#end2", "#end3"], { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out", stagger: 0.25 }, 9.5);
+      tl.fromTo("#end-name", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2)" }, 10.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
