@@ -93,7 +93,6 @@ func _ready() -> void:
 
 	before_btn = IconButton.new()
 	before_btn.kind = "eye"
-	before_btn.caption = "Before"
 	before_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	before_btn.position = Vector2(30, -200)
 	before_btn.held.connect(func(d): before_held.emit(d))
