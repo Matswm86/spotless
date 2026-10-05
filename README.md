@@ -73,6 +73,9 @@ tractor.
 - 3D furniture and vehicles: [Kenney](https://kenney.nl) Furniture Kit and Car Kit (CC0).
   The trophy, fan, road sign, mailbox, kettle, scooter, tools and rubbish are built
   from code.
+- App icon (`icon.png`, also `store/promo/assets/icon.png`): drawn in code by
+  `tools/make_icon.py` (PIL shapes only, no outside art). Re-running it rebuilds the
+  same file byte for byte.
 - Font: [Fredoka](https://github.com/google/fonts/tree/main/ofl/fredoka)
   (SIL Open Font License, see `assets/fonts/OFL.txt`).
 
@@ -80,6 +83,8 @@ tractor.
 
 1. Install **Godot 4.6.x** from https://godotengine.org/.
 2. Import `project.godot` and press **F5**. The mouse works as a finger.
+
+`store/`, `screenshots/` and `tools/` hold a `.gdignore`, so Godot never imports or packs them.
 
 `tests/capture.tscn` is a dev-only scene (not exported) where a bot plays every level
 and saves screenshots. Run it offscreen under Xvfb with `CAPTURE_DIR=/some/dir` and
