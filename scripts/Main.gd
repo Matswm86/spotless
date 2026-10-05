@@ -7,6 +7,10 @@ extends Node3D
 const DIRT_SHADER := preload("res://scripts/dirt.gdshader")
 const NOISE := preload("res://assets/tex/noise.png")
 const FINGER_OFFSET := 150.0
+## Rubbish centres stay this far (px) from HUD buttons and the wrist strip.
+const TRASH_CLEAR := 90.0
+## A rubbish tap counts on release if the finger moved less than this (px).
+const TAP_SLOP := 60.0
 const THRESH := 0.85
 const WIN_LINES := ["Good as new", "Sparkling clean", "Like brand new", "Beautiful work", "So satisfying", "Fresh and shiny"]
 
@@ -65,6 +69,7 @@ var trash: Array[Node3D] = []
 var bin: Node3D
 var _spin_speed := 0.0
 var _auto_pos := Vector2(-1, -1)
+var _down_pos := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -162,10 +167,8 @@ func load_level(index: int) -> void:
 	_frame_camera()
 	_setup_mask()
 	_setup_parts(obj)
-	var names := []
-	for st in level["stages"]:
-		names.append(Levels.STAGES[st]["name"])
-	hud.set_level(index, level["name"], names)
+	# The HUD shows one tool icon per stage, picked by stage key.
+	hud.set_level(index, level["name"], level["stages"])
 	# Colliders need a physics frame before rays can hit them.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -609,6 +612,9 @@ func _spawn_trash() -> void:
 		var vp := get_viewport().get_visible_rect().size
 		if sp.y < vp.y * 0.22 or sp.y > vp.y * 0.85 or sp.x < 60 or sp.x > vp.x - 60:
 			continue
+		# Rubbish is a child target: never under a HUD button or in the wrist strip.
+		if hud.blocks(sp, TRASH_CLEAR):
+			continue
 		var ok := true
 		for t in trash:
 			if t.global_position.distance_to(pos) < size * 0.12:
@@ -683,8 +689,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		touching = event.pressed
 		touch_pos = event.position
 		has_last = false
-		if event.pressed and state == "play" and stage.get("key", "") == "trash":
-			_tap_trash(event.position)
+		if event.pressed:
+			_down_pos = event.position
+		# Rubbish goes on release near where the finger came down (not on touch-down,
+		# so a resting palm does nothing), and never from the wrist strip.
+		elif state == "play" and stage.get("key", "") == "trash":
+			if event.position.distance_to(_down_pos) < TAP_SLOP and event.position.y < hud.wrist_top():
+				_tap_trash(event.position)
 	elif event is InputEventScreenDrag:
 		if event.index == 0:
 			touch_pos = event.position

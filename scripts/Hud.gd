@@ -1,8 +1,17 @@
 class_name Hud
 extends CanvasLayer
 
-## Screen overlay: level title, progress bar, the row of stages, colour swatches for the
-## paint stage, the before/after button and the "Spotless!" card.
+## Screen overlay: level number, progress bar, the row of stage icons, colour swatches
+## for the paint stage, the before/after button and the win card. No words, so a child
+## who cannot read can play.
+##
+## Touch layout at 1080 px wide (MWM Play child rules):
+## - every tappable target is at least IconButton.HIT (216 px = 12.7 mm at 430 dpi)
+##   and acts on release;
+## - the top-left HOME_CORNER square stays empty for the MWM Play home button;
+## - nothing tappable in the bottom WRIST strip;
+## - top-row items move below a phone's camera cutout; their touch areas still run
+##   to the top edge.
 
 signal next_pressed
 signal restart_pressed
@@ -12,26 +21,76 @@ signal before_held(down: bool)
 const ACCENT := Color(0.2, 0.7, 0.66)
 const INK := Color(0.2, 0.3, 0.36)
 const FONT := preload("res://assets/fonts/Fredoka.ttf")
+const HIT := IconButton.HIT
+## Top-left square kept free of UI (MWM Play home button, 216 px hit + 16 px gap).
+const HOME_CORNER := 232.0
+## Bottom strip with no targets (16 mm = 256 px).
+const WRIST := 256.0
+## Top of the info card; a camera cutout deeper than this pushes the top row down.
+const TOP_ROW_CLEAR := 20.0
+const CARD_H := 184.0
 
 var root: Control
+var top: Panel
+var level_disc: Panel
 var level_label: Label
-var title_label: Label
 var bar_bg: Panel
 var bar_fill: Panel
 var pct_label: Label
-var chips: HBoxContainer
-var hint: Label
-var swatches: HBoxContainer
+var chips: Array[StageChip] = []
+var hint: IconButton
+var swatches: Array[Swatch] = []
+var restart_btn: IconButton
 var before_btn: IconButton
 var sound_btn: IconButton
 var music_btn: IconButton
 var win_panel: Control
-var win_title: Label
-var win_sub: Label
-var _stage_names: Array = []
+var win_card: Panel
+var win_star: IconButton
+var next_btn: IconButton
+## Test hook: a fake top safe-area inset in window px; < 0 = ask the display.
+var fake_safe_top := -1.0
+var _stage_keys: Array = []
 var _stage_i := 0
 var _shown := 0.0
 var _target := 0.0
+var _hint_t := 0.0
+
+
+## Small stage marker: tool icon on a pill. Done = light with a tick badge, current =
+## filled and taller, upcoming = grey; shape and tick tell them apart, not only colour.
+class StageChip:
+	extends Control
+	var key := ""
+	var state := 0  # 0 upcoming, 1 current, 2 done
+
+	func _draw() -> void:
+		var inset := 0.0 if state == 1 else 8.0
+		var r := Rect2(0, inset, size.x, size.y - inset * 2.0)
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(int(r.size.y * 0.5))
+		sb.anti_aliasing = true
+		var ink := Color(0.55, 0.62, 0.66)
+		match state:
+			1:
+				sb.bg_color = ACCENT.darkened(0.1)
+				ink = Color.WHITE
+			2:
+				sb.bg_color = Color(0.86, 0.95, 0.93)
+				ink = ACCENT.darkened(0.35)
+			_:
+				sb.bg_color = Color(0.93, 0.94, 0.95)
+		draw_style_box(sb, r)
+		var k := minf(r.size.y, 56.0) / 64.0
+		draw_set_transform(size * 0.5, 0.0, Vector2(k, k))
+		IconButton.draw_icon(self, key, ink, sb.bg_color)
+		draw_set_transform(Vector2.ZERO)
+		if state == 2:
+			var c := Vector2(size.x - 14, 14)
+			draw_circle(c, 14, ACCENT.darkened(0.35))
+			draw_set_transform(c, 0.0, Vector2(0.4, 0.4))
+			IconButton.draw_icon(self, "check", Color.WHITE, Color.WHITE)
+			draw_set_transform(Vector2.ZERO)
 
 
 func _ready() -> void:
@@ -44,83 +103,52 @@ func _ready() -> void:
 	root.theme = th
 	add_child(root)
 
-	var top := _panel(Rect2(40, 60, 1000, 290), Color(1, 1, 1, 0.9), 44)
-	top.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	top.position = Vector2(-500, 60)
+	top = _panel(Rect2(0, 0, 600, CARD_H), Color(1, 1, 1, 0.9), 44)
 	root.add_child(top)
-	level_label = _label("Level 1", 36, Color(0.45, 0.55, 0.6))
-	level_label.position = Vector2(44, 22)
-	top.add_child(level_label)
-	title_label = _label("", 60, INK)
-	title_label.position = Vector2(44, 58)
-	top.add_child(title_label)
-	pct_label = _label("0%", 44, ACCENT.darkened(0.2))
-	pct_label.position = Vector2(700, 70)
-	pct_label.size = Vector2(256, 60)
-	pct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	top.add_child(pct_label)
-	bar_bg = _panel(Rect2(44, 150, 912, 34), Color(0.88, 0.92, 0.93), 17)
+	level_disc = _panel(Rect2(18, 16, 76, 76), ACCENT.darkened(0.1), 38)
+	top.add_child(level_disc)
+	level_label = _label("1", 46, Color.WHITE)
+	level_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	level_disc.add_child(level_label)
+	bar_bg = _panel(Rect2(112, 38, 340, 34), Color(0.88, 0.92, 0.93), 17)
 	top.add_child(bar_bg)
 	bar_fill = _panel(Rect2(0, 0, 34, 34), ACCENT, 17)
 	bar_bg.add_child(bar_fill)
-	chips = HBoxContainer.new()
-	chips.position = Vector2(44, 208)
-	chips.size = Vector2(912, 60)
-	chips.add_theme_constant_override("separation", 14)
-	chips.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_child(chips)
+	pct_label = _label("0%", 40, ACCENT.darkened(0.2))
+	pct_label.size = Vector2(120, 60)
+	pct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	top.add_child(pct_label)
 
-	sound_btn = IconButton.new()
-	sound_btn.kind = "sound_on" if Game.sound_on else "sound_off"
-	sound_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	sound_btn.position = Vector2(-150, 370)
+	restart_btn = _button("restart")
+	restart_btn.pressed.connect(func(): restart_pressed.emit())
+	sound_btn = _button("sound_on" if Game.sound_on else "sound_off")
 	sound_btn.pressed.connect(_toggle_sound)
-	root.add_child(sound_btn)
-	music_btn = IconButton.new()
-	music_btn.kind = "music_on" if Game.music_on else "music_off"
-	music_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	music_btn.position = Vector2(-150, 510)
+	music_btn = _button("music_on" if Game.music_on else "music_off")
 	music_btn.pressed.connect(_toggle_music)
-	root.add_child(music_btn)
 	sound_btn.visible = not Game.in_shell()
 	music_btn.visible = not Game.in_shell()
-	var restart := IconButton.new()
-	restart.kind = "restart"
-	restart.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	restart.position = Vector2(30, 370)
-	restart.pressed.connect(func(): restart_pressed.emit())
-	root.add_child(restart)
-
-	before_btn = IconButton.new()
-	before_btn.kind = "eye"
-	before_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	before_btn.position = Vector2(30, -200)
+	before_btn = _button("eye")
 	before_btn.held.connect(func(d): before_held.emit(d))
-	root.add_child(before_btn)
 
-	hint = _label("", 42, INK)
-	hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	hint.position = Vector2(-400, -350)
-	hint.size = Vector2(800, 96)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var hsb := StyleBoxFlat.new()
-	hsb.bg_color = Color(1, 1, 1, 0.88)
-	hsb.set_corner_radius_all(48)
-	hsb.anti_aliasing = true
-	hint.add_theme_stylebox_override("normal", hsb)
+	hint = IconButton.new()
+	hint.kind = "drag"
+	hint.disc_radius = 78.0
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint.modulate.a = 0.0
 	root.add_child(hint)
 
-	swatches = HBoxContainer.new()
-	swatches.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	swatches.position = Vector2(-330, -210)
-	swatches.size = Vector2(660, 130)
-	swatches.alignment = BoxContainer.ALIGNMENT_CENTER
-	swatches.add_theme_constant_override("separation", 30)
-	swatches.visible = false
-	root.add_child(swatches)
-
 	_build_win()
+	get_viewport().size_changed.connect(_layout)
+	_layout()
+
+
+func _button(k: String) -> IconButton:
+	var b := IconButton.new()
+	b.kind = k
+	root.add_child(b)
+	return b
 
 
 func _panel(r: Rect2, c: Color, radius: int) -> Panel:
@@ -155,66 +183,130 @@ func _build_win() -> void:
 	win_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	win_panel.visible = false
 	root.add_child(win_panel)
-	var card := _panel(Rect2(0, 0, 820, 420), Color(1, 1, 1, 0.95), 56)
-	card.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	card.position = Vector2(-410, -560)
-	win_panel.add_child(card)
-	win_title = _label("Spotless!", 96, ACCENT.darkened(0.15))
-	win_title.position = Vector2(0, 30)
-	win_title.size = Vector2(820, 120)
-	win_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(win_title)
-	win_sub = _label("", 40, Color(0.45, 0.55, 0.6))
-	win_sub.position = Vector2(0, 150)
-	win_sub.size = Vector2(820, 60)
-	win_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(win_sub)
-	var next := Button.new()
-	next.text = "Next"
-	next.add_theme_font_size_override("font_size", 60)
-	next.position = Vector2(210, 250)
-	next.size = Vector2(400, 130)
-	for st in ["normal", "hover", "pressed", "focus"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = ACCENT if st != "pressed" else ACCENT.darkened(0.15)
-		sb.set_corner_radius_all(65)
-		sb.anti_aliasing = true
-		next.add_theme_stylebox_override(st, sb)
-	next.add_theme_color_override("font_color", Color.WHITE)
-	next.add_theme_color_override("font_hover_color", Color.WHITE)
-	next.add_theme_color_override("font_pressed_color", Color.WHITE)
-	next.add_theme_color_override("font_focus_color", Color.WHITE)
-	next.pressed.connect(func():
+	win_card = _panel(Rect2(0, 0, 760, 380), Color(1, 1, 1, 0.95), 56)
+	win_panel.add_child(win_card)
+	# A star for the finished job, then one big arrow to the next object.
+	win_star = IconButton.new()
+	win_star.kind = "star"
+	win_star.bare = true
+	win_star.disc_radius = 120.0
+	win_star.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	win_star.position = Vector2(40, 30)
+	win_star.size = Vector2(320, 320)
+	win_card.add_child(win_star)
+	next_btn = IconButton.new()
+	next_btn.kind = "next"
+	next_btn.accent = ACCENT.darkened(0.2)
+	next_btn.disc_radius = 130.0
+	next_btn.position = Vector2(400, 30)
+	next_btn.size = Vector2(320, 320)
+	next_btn.pressed.connect(func():
 		Sfx.play("tap")
 		next_pressed.emit())
-	card.add_child(next)
+	win_card.add_child(next_btn)
 
 
-func set_level(index: int, name: String, stage_names: Array) -> void:
-	level_label.text = "Level %d" % (index + 1)
-	title_label.text = name
-	_stage_names = stage_names
+## Places everything for the current screen size and camera cutout.
+func _layout() -> void:
+	var vs := root.get_viewport_rect().size
+	var dy := maxf(0.0, safe_top_inset() - TOP_ROW_CLEAR)
+	# Info card between the home corner and the restart button.
+	top.position = Vector2(HOME_CORNER + 16.0, TOP_ROW_CLEAR + dy)
+	top.size = Vector2(vs.x - HOME_CORNER - 16.0 - HIT - 16.0, CARD_H)
+	bar_bg.size.x = top.size.x - 112.0 - 140.0
+	pct_label.position = Vector2(top.size.x - 136.0, 24)
+	_layout_chips()
+	# Top-right restart: touch area runs to the top and right screen edges.
+	restart_btn.position = Vector2(vs.x - HIT, 0)
+	restart_btn.size = Vector2(HIT, HIT + dy)
+	restart_btn.top_pad = dy
+	# Second row: eye below the home corner on the left edge, sound and music on the right.
+	before_btn.position = Vector2(0, HOME_CORNER + dy)
+	sound_btn.position = Vector2(vs.x - HIT * 2.0, HIT + dy)
+	music_btn.position = Vector2(vs.x - HIT, HIT + dy)
+	# Paint swatches sit just above the wrist strip.
+	var n := swatches.size()
+	for i in n:
+		swatches[i].position = Vector2(vs.x * 0.5 + (i - n * 0.5) * HIT, vs.y - WRIST - HIT)
+	var hint_y := vs.y - WRIST - HIT - (HIT if n > 0 else 0.0)
+	hint.size = Vector2(HIT, HIT)
+	hint.position = Vector2((vs.x - HIT) * 0.5, hint_y)
+	win_card.position = Vector2((vs.x - win_card.size.x) * 0.5, vs.y - WRIST - 24.0 - win_card.size.y)
+	for b in [restart_btn, before_btn, sound_btn, music_btn]:
+		b.queue_redraw()
+
+
+func _layout_chips() -> void:
+	var n := chips.size()
+	if n == 0:
+		return
+	var gap := 10.0
+	var w := (top.size.x - 36.0 - gap * (n - 1)) / n
+	for i in n:
+		chips[i].position = Vector2(18.0 + i * (w + gap), 104)
+		chips[i].size = Vector2(w, 68)
+
+
+## Depth of the top screen cutout in viewport px (0 on desktop and on phones without
+## a cutout in the drawn area). Uses the display safe area on phones, or fake_safe_top
+## in tests.
+func safe_top_inset() -> float:
+	var top_px := fake_safe_top
+	if top_px < 0.0:
+		if not OS.has_feature("mobile"):
+			return 0.0
+		top_px = float(DisplayServer.get_display_safe_area().position.y)
+	var win := DisplayServer.window_get_size()
+	if win.y <= 0:
+		return 0.0
+	return maxf(0.0, top_px * root.get_viewport_rect().size.y / float(win.y))
+
+
+## Re-reads the cutout (call after changing fake_safe_top).
+func apply_safe_area() -> void:
+	_layout()
+
+
+## True where a game target (rubbish) must not sit: under or next to a HUD button,
+## or in the wrist strip.
+func blocks(p: Vector2, margin: float) -> bool:
+	if p.y > root.get_viewport_rect().size.y - WRIST - margin:
+		return true
+	for b: Control in [restart_btn, before_btn, sound_btn, music_btn]:
+		if b.visible and b.get_global_rect().grow(margin).has_point(p):
+			return true
+	return false
+
+
+## Top of the wrist strip in viewport px.
+func wrist_top() -> float:
+	return root.get_viewport_rect().size.y - WRIST
+
+
+func set_level(index: int, _name: String, stage_keys: Array) -> void:
+	level_label.text = str(index + 1)
+	_stage_keys = stage_keys
 	win_panel.visible = false
-	swatches.visible = false
+	hide_swatches()
+	for c in chips:
+		c.queue_free()
+	chips.clear()
+	for k in stage_keys:
+		var chip := StageChip.new()
+		chip.key = String(k)
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top.add_child(chip)
+		chips.append(chip)
+	_layout_chips()
 	set_stage(0)
 	set_progress(0.0, true)
 
 
 func set_stage(i: int) -> void:
 	_stage_i = i
-	for c in chips.get_children():
-		c.queue_free()
-	for k in _stage_names.size():
-		var done := k < i
-		var cur := k == i
-		var chip := _panel(Rect2(0, 0, 0, 56), ACCENT if cur else (Color(0.86, 0.95, 0.93) if done else Color(0.93, 0.94, 0.95)), 28)
-		chip.custom_minimum_size = Vector2(maxf(150, 912.0 / _stage_names.size() - 14), 56)
-		var l := _label(String(_stage_names[k]), 34, Color.WHITE if cur else (ACCENT.darkened(0.25) if done else Color(0.55, 0.62, 0.66)))
-		l.set_anchors_preset(Control.PRESET_FULL_RECT)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		chip.add_child(l)
-		chips.add_child(chip)
+	for k in chips.size():
+		chips[k].state = 2 if k < i else (1 if k == i else 0)
+		chips[k].queue_redraw()
 
 
 func set_progress(p: float, instant := false) -> void:
@@ -223,8 +315,13 @@ func set_progress(p: float, instant := false) -> void:
 		_shown = _target
 
 
-func show_hint(t: String) -> void:
-	hint.text = t
+## Shows a wordless hint for the current stage: a tapping finger for the rubbish,
+## a sliding finger for every tool. The text is not shown (non-readers).
+func show_hint(_t: String) -> void:
+	var key: String = _stage_keys[_stage_i] if _stage_i < _stage_keys.size() else ""
+	hint.kind = "tap" if key == "trash" else "drag"
+	hint.queue_redraw()
+	_hint_t = 0.0
 	hint.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(hint, "modulate:a", 1.0, 0.4)
@@ -237,31 +334,35 @@ func hide_hint() -> void:
 
 
 func show_swatches(colors: Array, chosen: Color) -> void:
-	for c in swatches.get_children():
-		c.queue_free()
-	for col in colors:
+	hide_swatches()
+	for i in colors.size():
+		var col: Color = colors[i]
 		var b := Swatch.new()
 		b.color = col
+		b.slot = i
 		b.selected = col == chosen
 		b.pressed.connect(func():
-			for s in swatches.get_children():
-				(s as Swatch).selected = s == b
+			for s in swatches:
+				s.selected = s == b
 				s.queue_redraw()
 			Sfx.play("tap")
 			swatch_chosen.emit(col))
-		swatches.add_child(b)
-	swatches.visible = true
+		root.add_child(b)
+		swatches.append(b)
+	_layout()
 
 
 func hide_swatches() -> void:
-	swatches.visible = false
+	for s in swatches:
+		s.queue_free()
+	swatches.clear()
+	_layout()
 
 
-func show_win(sub: String) -> void:
-	win_sub.text = sub
+## `_sub` (a line of English praise) is not shown: the card is a star and an arrow.
+func show_win(_sub: String) -> void:
 	win_panel.visible = true
 	win_panel.modulate.a = 0.0
-	win_panel.scale = Vector2.ONE
 	var tw := create_tween()
 	tw.tween_property(win_panel, "modulate:a", 1.0, 0.5)
 	hide_hint()
@@ -289,3 +390,14 @@ func _process(delta: float) -> void:
 	bar_fill.size.x = maxf(34.0, w * _shown)
 	bar_fill.visible = _shown > 0.005
 	pct_label.text = "%d%%" % int(round(_shown * 100.0))
+	if hint.modulate.a > 0.0:
+		# The hint finger slides (tools) or pulses (rubbish) so it reads as a gesture.
+		_hint_t += delta
+		var base_x := (root.get_viewport_rect().size.x - HIT) * 0.5
+		if hint.kind == "drag":
+			hint.position.x = base_x + sin(_hint_t * 2.4) * 70.0
+			hint.scale = Vector2.ONE
+		else:
+			hint.position.x = base_x
+			hint.pivot_offset = hint.size * 0.5
+			hint.scale = Vector2.ONE * (1.0 + 0.08 * sin(_hint_t * 4.0))
