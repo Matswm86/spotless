@@ -86,6 +86,23 @@ tractor.
 
 `store/`, `screenshots/` and `tools/` hold a `.gdignore`, so Godot never imports or packs them.
 
+## Inside MWM Play (family app)
+
+- Touch rules for young children: every button, swatch and rubbish target is at least
+  216 px (12.7 mm at 430 dpi) and acts on release; the top-left 232 px square is kept
+  empty for the host's home button; nothing is tappable in the bottom 256 px.
+- No words in the play screens: tool icons for the stages, a finger hint, a star and
+  an arrow on the win card. Paint swatches carry a shape as well as a colour.
+- If the host sets `Engine.set_meta(&"mwm_play_shell", true)`, the sound and music
+  buttons are hidden and the game never mutes the Master bus.
+- Progress saves to `user://spotless_save.json`; an old `user://save.json` is read
+  once and written under the new name.
+- Autoloads `Game`, `Sfx`; class names `Shapes`, `Objects`, `CleanMask`, `Hud`,
+  `Swatch`, `Trash`, `Levels`, `Rooms`, `ToolRig`, `IconButton` (the host renames them).
+
+`tests/capture_shell.tscn` checks these rules with real touch events
+(`CAPTURE_SHELL=1`, `CAPTURE_INSET=120` for a fake camera cutout, `CAPTURE_LEVEL=n`).
+
 `tests/capture.tscn` is a dev-only scene (not exported) where a bot plays every level
 and saves screenshots. Run it offscreen under Xvfb with `CAPTURE_DIR=/some/dir` and
 `--audio-driver Dummy`; `CAPTURE_LEVELS=0,3` limits it to some levels.
