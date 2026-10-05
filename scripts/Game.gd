@@ -6,6 +6,12 @@ const SAVE_PATH := "user://spotless_save.json"
 ## Builds before 2026-10-05 saved here; read once, rewritten under SAVE_PATH.
 const OLD_SAVE_PATH := "user://save.json"
 
+## Set by a host app (MWM Play) before this game starts:
+## Engine.set_meta(&"mwm_play_shell", true). Inside the host the game hides its own
+## sound and music buttons and never mutes the Master bus, so the host's switches
+## decide what is heard. Standalone the meta is absent and nothing changes.
+const SHELL_META := &"mwm_play_shell"
+
 var level := 0
 var sound_on := true
 var music_on := true
@@ -18,6 +24,12 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
+
+
+## Read every time (not cached at start), since the host may set the meta after
+## this autoload's _ready.
+func in_shell() -> bool:
+	return Engine.has_meta(SHELL_META) and bool(Engine.get_meta(SHELL_META))
 
 
 func save_game() -> void:

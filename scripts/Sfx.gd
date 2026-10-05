@@ -40,8 +40,11 @@ func _ready() -> void:
 
 
 func apply_settings() -> void:
-	AudioServer.set_bus_mute(0, not Game.sound_on)
-	if Game.music_on and Game.sound_on:
+	# Inside MWM Play the host owns the Master bus and the sound switches.
+	var shell := Game.in_shell()
+	if not shell:
+		AudioServer.set_bus_mute(0, not Game.sound_on)
+	if shell or (Game.music_on and Game.sound_on):
 		if not _music.playing:
 			_music.play()
 	else:

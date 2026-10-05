@@ -82,6 +82,8 @@ func _ready() -> void:
 	music_btn.position = Vector2(-150, 510)
 	music_btn.pressed.connect(_toggle_music)
 	root.add_child(music_btn)
+	sound_btn.visible = not Game.in_shell()
+	music_btn.visible = not Game.in_shell()
 	var restart := IconButton.new()
 	restart.kind = "restart"
 	restart.set_anchors_preset(Control.PRESET_TOP_LEFT)
