@@ -14,6 +14,7 @@ that feels good, without the ad wrapper.
   <img src="screenshots/02.jpg" alt="Grinding rust off a road sign" width="240"/>
   <img src="screenshots/03.jpg" alt="Soap foam on a muddy car" width="240"/>
 </p>
+<p align="center"><em>Three levels in play: mud on a bathroom sink, rust on a road sign, soap foam on a muddy car.</em></p>
 
 ## Download
 
@@ -38,7 +39,7 @@ once most of the object is done, so you never hunt for the last speck.
 |---|---|---|
 | Tidy up | your hand | Tap the rubbish; it flies into the bin |
 | Wash / Rinse | pressure washer | Blasts mud and dust off, rinses foam away |
-| Vacuum | hand vacuum | Sucks up dust from fabric |
+| Vacuum | hand vacuum | Sucks up dust |
 | Soap | foam gun | Covers grime in foam, ready to be rinsed |
 | Scrub | sponge | Wipes off stains, moss, grease and limescale |
 | Sand | angle grinder | Grinds off rust, with sparks |
@@ -56,6 +57,10 @@ tractor.
 
 ## How it works
 
+Spotless is a Godot 4.6 project written in GDScript with the Mobile renderer; GitHub
+Actions exports the Android APK. Each level is a 3D object in a small room, and cleaning
+it is a shader driven by a mask that your finger paints:
+
 - Every object has one shader (`scripts/dirt.gdshader`) with five layers: loose dirt,
   grime, new paint, foam and polish. A 192x192 mask, projected from the camera onto
   the object, says how much of each layer is left at each spot.
@@ -67,6 +72,11 @@ tractor.
   a slow electric-piano and music-box loop, and a looping sound per tool (water hiss,
   foam crackle, sponge strokes, grinder whine, spray can, polisher hum, vacuum).
   Tool sounds swell while the tool touches the object and fade when you lift your finger.
+
+## Status
+
+Version 0.1.0 with 17 levels. The APK is a debug-signed sideload build, not a store
+release.
 
 ## Credits
 
